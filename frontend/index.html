@@ -1,0 +1,1620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VitalSense — Live Health Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root {
+  --ink:     #06090f;
+  --ink2:    #0d1520;
+  --ink3:    #142030;
+  --line:    #1e3048;
+  --line2:   #2a4060;
+  --mist:    #4a7090;
+  --dim:     #6b90aa;
+  --text:    #ddeeff;
+  --text2:   #9ab8cc;
+  --vivid:   #00e5b0;
+  --vivid2:  #00aaff;
+  --warn:    #ffb444;
+  --danger:  #ff4466;
+  --safe:    #00e5b0;
+  --r0: 6px; --r1: 12px; --r2: 20px;
+  --glow-v:  0 0 24px rgba(0,229,176,0.18);
+  --glow-b:  0 0 24px rgba(0,170,255,0.18);
+  --glow-d:  0 0 28px rgba(255,68,102,0.22);
+}
+
+*{margin:0;padding:0;box-sizing:border-box;}
+html{font-size:14px;}
+
+body {
+  background: var(--ink);
+  color: var(--text);
+  font-family: 'Lato', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* NOISE TEXTURE */
+body::before {
+  content:'';
+  position:fixed;inset:0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events:none;z-index:0;opacity:.4;
+}
+
+/* ── LAYOUT ─────────────────────────────── */
+.shell { position:relative;z-index:1;display:flex;flex-direction:column;min-height:100vh; }
+
+/* TOPBAR */
+.topbar {
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 32px;
+  height:60px;
+  background:rgba(6,9,15,0.9);
+  border-bottom:1px solid var(--line);
+  backdrop-filter:blur(20px);
+  position:sticky;top:0;z-index:100;
+}
+.brand { display:flex;align-items:center;gap:10px; }
+.brand-mark {
+  width:32px;height:32px;
+  background:linear-gradient(135deg,var(--vivid),var(--vivid2));
+  border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:16px;
+  box-shadow:var(--glow-v);
+}
+.brand-name {
+  font-family:'Syne',sans-serif;
+  font-size:18px;font-weight:800;
+  letter-spacing:-0.5px;
+}
+.brand-name em { color:var(--vivid);font-style:normal; }
+
+.topbar-center { display:flex;align-items:center;gap:8px; }
+.user-chip {
+  display:flex;align-items:center;gap:8px;
+  padding:6px 14px;
+  background:var(--ink2);
+  border:1px solid var(--line);
+  border-radius:30px;
+  font-size:12px;
+  color:var(--text2);
+}
+.user-avatar {
+  width:24px;height:24px;
+  background:linear-gradient(135deg,var(--vivid2),var(--vivid));
+  border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:700;color:var(--ink);
+}
+
+.topbar-right { display:flex;align-items:center;gap:12px; }
+.live-dot {
+  display:flex;align-items:center;gap:6px;
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px;color:var(--vivid);
+}
+.pulse-dot {
+  width:8px;height:8px;border-radius:50%;
+  background:var(--vivid);
+  box-shadow:0 0 8px var(--vivid);
+  animation:pulse-live 2s ease-in-out infinite;
+}
+@keyframes pulse-live{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(0.8)}}
+
+.btn-outline {
+  padding:7px 16px;
+  background:transparent;
+  border:1px solid var(--line2);
+  border-radius:var(--r0);
+  color:var(--text2);
+  font-size:12px;font-family:'Lato',sans-serif;
+  cursor:pointer;
+  transition:all .2s;
+}
+.btn-outline:hover{border-color:var(--vivid);color:var(--vivid);}
+
+/* MAIN BODY */
+.body { display:flex;flex:1; }
+
+/* SIDEBAR */
+.sidebar {
+  width:220px;flex-shrink:0;
+  background:var(--ink2);
+  border-right:1px solid var(--line);
+  padding:24px 0;
+  display:flex;flex-direction:column;gap:4px;
+}
+.nav-section-label {
+  font-family:'JetBrains Mono',monospace;
+  font-size:9px;letter-spacing:2px;color:var(--mist);
+  text-transform:uppercase;
+  padding:12px 20px 4px;
+}
+.nav-item {
+  display:flex;align-items:center;gap:10px;
+  padding:10px 20px;
+  color:var(--dim);font-size:13px;
+  cursor:pointer;transition:all .15s;
+  border-left:2px solid transparent;
+}
+.nav-item:hover{color:var(--text);background:rgba(255,255,255,0.03);}
+.nav-item.active{color:var(--vivid);background:rgba(0,229,176,0.07);border-left-color:var(--vivid);}
+.nav-icon{font-size:15px;width:20px;text-align:center;}
+.nav-badge {
+  margin-left:auto;
+  background:var(--danger);
+  color:white;font-size:10px;font-weight:700;
+  padding:2px 6px;border-radius:10px;
+}
+
+.sidebar-footer {
+  margin-top:auto;
+  padding:16px 20px;
+  border-top:1px solid var(--line);
+}
+.wearable-status {
+  display:flex;align-items:center;gap:8px;
+  font-size:12px;color:var(--dim);
+  margin-bottom:10px;
+}
+.wearable-dot{width:6px;height:6px;border-radius:50%;}
+.w-connected{background:var(--vivid);box-shadow:0 0 6px var(--vivid);}
+.w-disconnected{background:var(--mist);}
+
+.btn-connect {
+  width:100%;padding:8px;
+  background:linear-gradient(135deg,var(--vivid),var(--vivid2));
+  border:none;border-radius:var(--r0);
+  color:var(--ink);font-size:12px;font-weight:700;font-family:'Lato',sans-serif;
+  cursor:pointer;transition:opacity .2s;
+}
+.btn-connect:hover{opacity:.85;}
+
+/* MAIN CONTENT */
+.content { flex:1;overflow-y:auto;padding:28px;display:flex;flex-direction:column;gap:24px; }
+
+/* PANELS (views) */
+.panel{display:none;}
+.panel.active{display:contents;}
+
+/* ── CARDS ──────────────────────────────── */
+.card {
+  background:var(--ink2);
+  border:1px solid var(--line);
+  border-radius:var(--r2);
+  padding:22px;
+  transition:border-color .3s;
+}
+.card:hover{border-color:var(--line2);}
+.card-head {
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:18px;
+}
+.card-title-group { display:flex;align-items:center;gap:10px; }
+.card-icon{
+  width:30px;height:30px;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;flex-shrink:0;
+}
+.ci-green{background:rgba(0,229,176,.12);}
+.ci-blue{background:rgba(0,170,255,.12);}
+.ci-red{background:rgba(255,68,102,.12);}
+.ci-orange{background:rgba(255,180,68,.12);}
+.ci-purple{background:rgba(160,90,255,.12);}
+.card-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;}
+.card-sub{font-size:11px;color:var(--dim);margin-top:2px;}
+.card-tag {
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px;color:var(--mist);
+  background:var(--ink3);
+  border:1px solid var(--line);
+  padding:3px 10px;border-radius:20px;
+}
+
+/* ── OVERVIEW GRID ──────────────────────── */
+.overview-grid {
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:16px;
+}
+.overview-row2 {
+  display:grid;
+  grid-template-columns:1.6fr 1fr 1fr;
+  gap:16px;
+}
+.overview-row3 {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:16px;
+}
+
+/* VITAL TILE */
+.vital-tile {
+  background:var(--ink2);
+  border:1px solid var(--line);
+  border-radius:var(--r1);
+  padding:18px;
+  display:flex;flex-direction:column;gap:8px;
+  position:relative;overflow:hidden;
+  transition:border-color .3s, transform .2s;
+  cursor:default;
+}
+.vital-tile:hover{border-color:var(--line2);transform:translateY(-2px);}
+.vital-tile::before {
+  content:'';position:absolute;top:0;right:0;
+  width:60px;height:60px;
+  border-radius:0 var(--r1) 0 60px;
+  opacity:.06;
+}
+.vt-green::before{background:var(--vivid);}
+.vt-blue::before{background:var(--vivid2);}
+.vt-orange::before{background:var(--warn);}
+.vt-red::before{background:var(--danger);}
+.vt-purple::before{background:#a05aff;}
+
+.vt-label{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--dim);}
+.vt-value{
+  font-family:'JetBrains Mono',monospace;
+  font-size:28px;font-weight:500;
+  line-height:1;
+}
+.vt-unit{font-size:12px;color:var(--mist);margin-left:4px;}
+.vt-trend {
+  display:flex;align-items:center;gap:5px;
+  font-size:11px;color:var(--dim);
+  font-family:'JetBrains Mono',monospace;
+}
+.trend-up{color:var(--danger);}
+.trend-down{color:var(--vivid);}
+.trend-flat{color:var(--mist);}
+.vt-sparkline{height:32px;margin-top:4px;}
+
+/* RISK GAUGE CARD */
+.risk-gauge-inner {
+  display:flex;flex-direction:column;align-items:center;
+  padding:8px 0;
+}
+.gauge-wrap{position:relative;width:180px;height:110px;margin-bottom:8px;}
+.gauge-svg{width:180px;height:100px;overflow:visible;}
+.gauge-arc-bg{fill:none;stroke:var(--line2);stroke-width:12;stroke-linecap:round;}
+.gauge-arc-fill{fill:none;stroke-width:12;stroke-linecap:round;transition:stroke-dashoffset 1.2s cubic-bezier(.4,0,.2,1),stroke .5s;}
+.gauge-center{
+  position:absolute;top:52%;left:50%;
+  transform:translate(-50%,-50%);
+  text-align:center;
+}
+.gauge-pct{
+  font-family:'Syne',sans-serif;
+  font-size:26px;font-weight:800;line-height:1;
+}
+.gauge-sub{font-size:9px;color:var(--dim);letter-spacing:1px;margin-top:2px;}
+
+.risk-badge {
+  display:inline-flex;align-items:center;gap:8px;
+  padding:8px 22px;
+  border-radius:30px;
+  font-family:'Syne',sans-serif;
+  font-size:14px;font-weight:700;
+  border:1.5px solid;
+  margin-bottom:6px;
+}
+.rb-dot{width:8px;height:8px;border-radius:50%;}
+.rb-high{color:var(--danger);border-color:var(--danger);background:rgba(255,68,102,.08);}
+.rb-high .rb-dot{background:var(--danger);box-shadow:0 0 8px var(--danger);animation:blink 1.2s ease-in-out infinite;}
+.rb-moderate{color:var(--warn);border-color:var(--warn);background:rgba(255,180,68,.08);}
+.rb-moderate .rb-dot{background:var(--warn);}
+.rb-low{color:var(--vivid);border-color:var(--vivid);background:rgba(0,229,176,.08);}
+.rb-low .rb-dot{background:var(--vivid);}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+
+.prob-bars{display:flex;flex-direction:column;gap:8px;width:100%;margin-top:12px;}
+.prob-row{display:flex;align-items:center;gap:8px;}
+.prob-label{font-size:11px;color:var(--dim);width:70px;flex-shrink:0;}
+.prob-track{flex:1;height:5px;background:var(--line);border-radius:3px;overflow:hidden;}
+.prob-fill{height:100%;border-radius:3px;transition:width 1s cubic-bezier(.4,0,.2,1);}
+.prob-pct{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--mist);width:38px;text-align:right;}
+
+/* SCORE BARS */
+.score-list{display:flex;flex-direction:column;gap:14px;}
+.sc-row{display:flex;flex-direction:column;gap:6px;}
+.sc-head{display:flex;justify-content:space-between;}
+.sc-name{font-size:12px;color:var(--text2);font-weight:600;}
+.sc-num{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--mist);}
+.sc-track{height:7px;background:var(--ink3);border-radius:4px;overflow:hidden;}
+.sc-fill{height:100%;border-radius:4px;transition:width 1s cubic-bezier(.4,0,.2,1);}
+
+/* ALERTS */
+.alert-feed{display:flex;flex-direction:column;gap:8px;max-height:260px;overflow-y:auto;}
+.alert-item{
+  display:flex;align-items:flex-start;gap:10px;
+  padding:12px 14px;
+  border-radius:var(--r0);
+  border:1px solid;
+  font-size:12px;line-height:1.5;
+  animation:fadeIn .4s ease;
+}
+.al-high{background:rgba(255,68,102,.07);border-color:rgba(255,68,102,.25);color:var(--text);}
+.al-moderate{background:rgba(255,180,68,.07);border-color:rgba(255,180,68,.25);color:var(--text);}
+.al-info{background:rgba(0,170,255,.07);border-color:rgba(0,170,255,.2);color:var(--text2);}
+.al-time{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--mist);margin-left:auto;flex-shrink:0;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+
+/* RECOS */
+.reco-list{display:flex;flex-direction:column;gap:8px;}
+.reco-item{
+  display:flex;gap:10px;
+  padding:10px 14px;
+  background:var(--ink3);
+  border:1px solid var(--line);
+  border-radius:var(--r0);
+  font-size:12px;line-height:1.6;color:var(--text2);
+}
+.reco-icon{font-size:14px;flex-shrink:0;margin-top:1px;}
+
+/* VOICE RECORDER */
+.voice-wrap{display:flex;flex-direction:column;align-items:center;gap:14px;}
+#waveCanvas{width:100%;height:50px;background:var(--ink3);border:1px solid var(--line);border-radius:8px;}
+.mic-btn{
+  width:64px;height:64px;border-radius:50%;
+  background:linear-gradient(135deg,var(--vivid),var(--vivid2));
+  border:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  font-size:26px;
+  box-shadow:0 0 0 8px rgba(0,229,176,.07),var(--glow-v);
+  transition:transform .2s,box-shadow .2s;
+}
+.mic-btn:hover{transform:scale(1.07);box-shadow:0 0 0 14px rgba(0,229,176,.07),var(--glow-v);}
+.mic-btn.rec{
+  background:linear-gradient(135deg,var(--danger),#ff8c60);
+  box-shadow:0 0 0 8px rgba(255,68,102,.08),var(--glow-d);
+  animation:pulse-rec 1s ease-in-out infinite;
+}
+@keyframes pulse-rec{0%,100%{box-shadow:0 0 0 8px rgba(255,68,102,.08),var(--glow-d)}50%{box-shadow:0 0 0 18px rgba(255,68,102,.03),var(--glow-d)}}
+.mic-status{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--dim);letter-spacing:.5px;}
+.mic-status.active{color:var(--danger);}
+.mic-status.done{color:var(--vivid);}
+.voice-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%;}
+.vf-chip{background:var(--ink3);border:1px solid var(--line);border-radius:8px;padding:8px 12px;}
+.vf-l{font-size:9px;color:var(--mist);letter-spacing:.5px;text-transform:uppercase;margin-bottom:3px;}
+.vf-v{font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--vivid);}
+
+/* CHART CONTAINER */
+.chart-wrap{position:relative;height:200px;}
+.chart-wrap-sm{position:relative;height:160px;}
+
+/* ONBOARDING MODAL */
+.modal-bg{
+  position:fixed;inset:0;z-index:1000;
+  background:rgba(6,9,15,.92);
+  backdrop-filter:blur(12px);
+  display:flex;align-items:center;justify-content:center;
+}
+.modal-box{
+  background:var(--ink2);
+  border:1px solid var(--line2);
+  border-radius:var(--r2);
+  padding:40px;
+  width:420px;max-width:92vw;
+  box-shadow:0 24px 60px rgba(0,0,0,.5);
+  animation:modalIn .4s cubic-bezier(.4,0,.2,1);
+}
+@keyframes modalIn{from{opacity:0;transform:scale(.95) translateY(20px)}to{opacity:1;transform:none}}
+.modal-title{
+  font-family:'Syne',sans-serif;
+  font-size:24px;font-weight:800;
+  margin-bottom:6px;
+}
+.modal-title em{color:var(--vivid);font-style:normal;}
+.modal-desc{font-size:13px;color:var(--dim);line-height:1.6;margin-bottom:28px;}
+
+.field-wrap{display:flex;flex-direction:column;gap:6px;margin-bottom:16px;}
+.field-label{font-size:11px;font-weight:700;color:var(--text2);letter-spacing:.5px;text-transform:uppercase;}
+.field-input{
+  background:var(--ink3);
+  border:1px solid var(--line);
+  border-radius:var(--r0);
+  color:var(--text);
+  font-family:'JetBrains Mono',monospace;
+  font-size:14px;
+  padding:12px 16px;
+  outline:none;width:100%;
+  transition:border-color .2s,box-shadow .2s;
+}
+.field-input:focus{border-color:var(--vivid);box-shadow:0 0 0 3px rgba(0,229,176,.08);}
+
+.toggle-row{display:flex;gap:8px;}
+.tog-btn{
+  flex:1;padding:11px;
+  background:var(--ink3);border:1px solid var(--line);
+  border-radius:var(--r0);
+  color:var(--dim);font-size:13px;cursor:pointer;
+  transition:all .15s;text-align:center;
+  font-family:'Lato',sans-serif;
+}
+.tog-btn.on{background:rgba(0,229,176,.1);border-color:var(--vivid);color:var(--vivid);font-weight:700;}
+
+.btn-primary{
+  width:100%;padding:14px;
+  background:linear-gradient(135deg,var(--vivid),var(--vivid2));
+  border:none;border-radius:var(--r1);
+  color:var(--ink);font-size:14px;font-weight:700;
+  font-family:'Syne',sans-serif;letter-spacing:.3px;
+  cursor:pointer;transition:opacity .2s,transform .2s;
+  box-shadow:var(--glow-v);
+  margin-top:8px;
+}
+.btn-primary:hover{opacity:.88;transform:translateY(-1px);}
+
+/* SYNC MODAL */
+.sync-option{
+  display:flex;align-items:center;gap:14px;
+  padding:16px;
+  background:var(--ink3);border:1px solid var(--line);
+  border-radius:var(--r1);cursor:pointer;
+  transition:border-color .2s,background .2s;
+  margin-bottom:12px;
+}
+.sync-option:hover{border-color:var(--vivid2);background:rgba(0,170,255,.06);}
+.sync-logo{width:40px;height:40px;border-radius:10px;object-fit:contain;display:flex;align-items:center;justify-content:center;font-size:24px;}
+.sync-info{flex:1;}
+.sync-name{font-weight:700;font-size:14px;margin-bottom:2px;}
+.sync-desc{font-size:11px;color:var(--dim);}
+.sync-arrow{color:var(--mist);}
+
+/* TOAST */
+.toast{
+  position:fixed;bottom:28px;right:28px;z-index:500;
+  background:var(--ink2);border:1px solid var(--line2);
+  border-radius:var(--r1);padding:14px 20px;
+  font-size:13px;color:var(--text);
+  box-shadow:0 8px 30px rgba(0,0,0,.4);
+  transform:translateY(60px);opacity:0;
+  transition:all .3s cubic-bezier(.4,0,.2,1);
+  max-width:300px;
+}
+.toast.show{transform:translateY(0);opacity:1;}
+
+/* EMPTY STATE */
+.empty-card{
+  display:flex;flex-direction:column;align-items:center;
+  padding:48px 24px;text-align:center;
+  color:var(--mist);
+}
+.empty-icon{font-size:48px;margin-bottom:16px;opacity:.4;}
+.empty-msg{font-size:14px;line-height:1.6;}
+
+/* MODEL STATUS */
+.model-pill{
+  display:flex;align-items:center;gap:6px;
+  padding:4px 12px;
+  background:var(--ink3);border:1px solid var(--line);
+  border-radius:20px;
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px;color:var(--dim);
+}
+.m-dot{width:6px;height:6px;border-radius:50%;background:var(--vivid);}
+
+/* ANIMATIONS */
+.stagger > *{opacity:0;animation:fadeUp .5s ease both;}
+.stagger > *:nth-child(1){animation-delay:.05s}
+.stagger > *:nth-child(2){animation-delay:.1s}
+.stagger > *:nth-child(3){animation-delay:.15s}
+.stagger > *:nth-child(4){animation-delay:.2s}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:var(--ink);}
+::-webkit-scrollbar-thumb{background:var(--line2);border-radius:2px;}
+
+@media(max-width:900px){
+  .sidebar{display:none;}
+  .overview-grid{grid-template-columns:1fr 1fr;}
+  .overview-row2,.overview-row3{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ ONBOARDING MODAL ════════════════════════════════════════════════════ -->
+<div class="modal-bg" id="onboardModal">
+  <div class="modal-box">
+    <div style="font-size:32px;margin-bottom:12px;">🫀</div>
+    <div class="modal-title">Welcome to <em>VitalSense</em></div>
+    <div class="modal-desc">
+      We only need two things from you. Everything else —
+      heart rate, blood pressure, cholesterol, activity, sleep —
+      streams automatically from your wearable.
+    </div>
+    <div class="field-wrap">
+      <div class="field-label">Your Name</div>
+      <input class="field-input" id="ob_name" placeholder="e.g. Priya Sharma" maxlength="40">
+    </div>
+    <div class="field-wrap">
+      <div class="field-label">Age</div>
+      <input class="field-input" id="ob_age" type="number" min="1" max="110" placeholder="e.g. 34">
+    </div>
+    <div class="field-wrap">
+      <div class="field-label">Biological Sex</div>
+      <div class="toggle-row">
+        <button class="tog-btn" id="tog_f" onclick="setGender(0)">♀ Female</button>
+        <button class="tog-btn on" id="tog_m" onclick="setGender(1)">♂ Male</button>
+      </div>
+    </div>
+    <button class="btn-primary" onclick="completeOnboarding()">Continue →</button>
+  </div>
+</div>
+
+<!-- ═══ CONNECT WEARABLE MODAL ══════════════════════════════════════════════ -->
+<div class="modal-bg" id="connectModal" style="display:none">
+  <div class="modal-box">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <div class="modal-title" style="font-size:18px;">Connect Wearable</div>
+      <button class="btn-outline" onclick="closeConnect()">✕</button>
+    </div>
+    <div class="modal-desc">Choose your device to authorize data access via OAuth.</div>
+    <div class="sync-option" onclick="connectWearable('fitbit')">
+      <div class="sync-logo">🏃</div>
+      <div class="sync-info">
+        <div class="sync-name">Fitbit</div>
+        <div class="sync-desc">Heart rate, sleep, activity, stress score</div>
+      </div>
+      <span class="sync-arrow">→</span>
+    </div>
+    <div class="sync-option" onclick="connectWearable('googlefit')">
+      <div class="sync-logo">❤️</div>
+      <div class="sync-info">
+        <div class="sync-name">Google Fit</div>
+        <div class="sync-desc">BP, heart rate, steps, glucose, calories</div>
+      </div>
+      <span class="sync-arrow">→</span>
+    </div>
+    <p style="font-size:11px;color:var(--mist);text-align:center;margin-top:8px;">
+      Data is encrypted in transit. We never sell your health information.
+    </p>
+  </div>
+</div>
+
+<!-- ═══ SHELL ════════════════════════════════════════════════════════════════ -->
+<div class="shell">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-mark">🫀</div>
+      <div class="brand-name">Vital<em>Sense</em></div>
+    </div>
+    <div class="topbar-center">
+      <div class="user-chip">
+        <div class="user-avatar" id="userAvatarTop">?</div>
+        <span id="userNameTop">Loading...</span>
+      </div>
+      <div class="model-pill">
+        <div class="m-dot"></div>
+        <span id="modelTag">XGBoost v1</span>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="live-dot">
+        <div class="pulse-dot" id="liveDot"></div>
+        <span id="liveStatus">LIVE</span>
+      </div>
+      <button class="btn-outline" onclick="triggerSync()">⟳ Sync Now</button>
+    </div>
+  </div>
+
+  <div class="body">
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+      <div class="nav-section-label">Monitor</div>
+      <div class="nav-item active" onclick="showPanel('overview')" id="nav-overview">
+        <span class="nav-icon">📊</span> Overview
+      </div>
+      <div class="nav-item" onclick="showPanel('vitals')" id="nav-vitals">
+        <span class="nav-icon">💓</span> Live Vitals
+      </div>
+      <div class="nav-item" onclick="showPanel('trends')" id="nav-trends">
+        <span class="nav-icon">📈</span> Trends
+      </div>
+      <div class="nav-section-label">Analysis</div>
+      <div class="nav-item" onclick="showPanel('voice')" id="nav-voice">
+        <span class="nav-icon">🎙️</span> Voice Check
+      </div>
+      <div class="nav-item" onclick="showPanel('alerts')" id="nav-alerts">
+        <span class="nav-icon">🔔</span> Alerts
+        <span class="nav-badge" id="alertBadge" style="display:none">0</span>
+      </div>
+
+
+      <div class="sidebar-footer">
+        <div class="wearable-status">
+          <div class="wearable-dot w-disconnected" id="wDot"></div>
+          <span id="wLabel">No wearable</span>
+        </div>
+        <button class="btn-connect" onclick="openConnect()">+ Connect Wearable</button>
+      </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="content" id="mainContent">
+
+      <!-- ── OVERVIEW PANEL ─────────────────────────────────────────── -->
+      <div class="panel active" id="panel-overview">
+
+        <!-- Vital tiles row -->
+        <div class="overview-grid stagger" id="vitalTiles">
+          <div class="vital-tile vt-blue">
+            <div class="vt-label">Heart Rate</div>
+            <div><span class="vt-value" id="v_hr">--</span><span class="vt-unit">bpm</span></div>
+            <div class="vt-trend"><span id="v_hr_trend">— </span> vs last hour</div>
+            <canvas class="vt-sparkline" id="sp_hr"></canvas>
+          </div>
+          <div class="vital-tile vt-orange">
+            <div class="vt-label">Blood Pressure</div>
+            <div><span class="vt-value" id="v_bp">--</span><span class="vt-unit">mmHg</span></div>
+            <div class="vt-trend" id="v_bp_trend">Systolic</div>
+            <canvas class="vt-sparkline" id="sp_bp"></canvas>
+          </div>
+          <div class="vital-tile vt-purple">
+            <div class="vt-label">HRV</div>
+            <div><span class="vt-value" id="v_hrv">--</span><span class="vt-unit">ms</span></div>
+            <div class="vt-trend" id="v_hrv_trend">Recovery index</div>
+            <canvas class="vt-sparkline" id="sp_hrv"></canvas>
+          </div>
+          <div class="vital-tile vt-green">
+            <div class="vt-label">Daily Steps</div>
+            <div><span class="vt-value" id="v_steps">--</span></div>
+            <div class="vt-trend" id="v_steps_trend">of 10,000 goal</div>
+            <canvas class="vt-sparkline" id="sp_steps"></canvas>
+          </div>
+        </div>
+
+        <!-- Row 2: Risk gauge + Score bars + Alerts -->
+        <div class="overview-row2 stagger">
+
+          <!-- RISK GAUGE -->
+          <div class="card">
+            <div class="card-head">
+              <div class="card-title-group">
+                <div class="card-icon ci-red">🎯</div>
+                <div>
+                  <div class="card-title">Disease Risk</div>
+                  <div class="card-sub">XGBoost · live inference</div>
+                </div>
+              </div>
+              <div class="card-tag" id="lastPredTime">—</div>
+            </div>
+            <div id="riskEmpty" class="empty-card" style="padding:24px">
+              <div class="empty-icon">🔬</div>
+              <div class="empty-msg">Connect a wearable to<br>begin live risk prediction</div>
+            </div>
+            <div id="riskResult" style="display:none">
+              <div class="risk-gauge-inner">
+                <div class="gauge-wrap">
+                  <svg class="gauge-svg" viewBox="0 0 180 100">
+                    <path class="gauge-arc-bg" d="M20,90 A80,80 0 0,1 160,90" stroke-dasharray="251" stroke-dashoffset="0"/>
+                    <path class="gauge-arc-fill" id="gaugeArc" d="M20,90 A80,80 0 0,1 160,90"
+                          stroke-dasharray="251" stroke-dashoffset="251"/>
+                  </svg>
+                  <div class="gauge-center">
+                    <div class="gauge-pct" id="gaugePct">0%</div>
+                    <div class="gauge-sub">RISK</div>
+                  </div>
+                </div>
+                <div class="risk-badge rb-low" id="riskBadge">
+                  <span class="rb-dot"></span>
+                  <span id="riskLabel">LOW RISK</span>
+                </div>
+                <div style="font-size:11px;color:var(--mist);font-family:'JetBrains Mono',monospace" id="confText"></div>
+              </div>
+              <div class="prob-bars" id="probBars"></div>
+            </div>
+          </div>
+
+          <!-- SCORE BARS -->
+          <div class="card">
+            <div class="card-head">
+              <div class="card-title-group">
+                <div class="card-icon ci-purple">📐</div>
+                <div><div class="card-title">Risk Factors</div></div>
+              </div>
+            </div>
+            <div class="score-list">
+              <div class="sc-row">
+                <div class="sc-head"><span class="sc-name">🧠 Stress</span><span class="sc-num" id="sc_stress">—</span></div>
+                <div class="sc-track"><div class="sc-fill" id="scb_stress" style="width:0%;background:linear-gradient(90deg,#ff6b6b,var(--danger))"></div></div>
+              </div>
+              <div class="sc-row">
+                <div class="sc-head"><span class="sc-name">😴 Fatigue</span><span class="sc-num" id="sc_fatigue">—</span></div>
+                <div class="sc-track"><div class="sc-fill" id="scb_fatigue" style="width:0%;background:linear-gradient(90deg,#667eea,#764ba2)"></div></div>
+              </div>
+              <div class="sc-row">
+                <div class="sc-head"><span class="sc-name">💉 Lab Risk</span><span class="sc-num" id="sc_lab">—</span></div>
+                <div class="sc-track"><div class="sc-fill" id="scb_lab" style="width:0%;background:linear-gradient(90deg,var(--warn),#ff8c00)"></div></div>
+              </div>
+              <div class="sc-row">
+                <div class="sc-head"><span class="sc-name">🏃 Lifestyle</span><span class="sc-num" id="sc_life">—</span></div>
+                <div class="sc-track"><div class="sc-fill" id="scb_life" style="width:0%;background:linear-gradient(90deg,var(--vivid2),var(--vivid))"></div></div>
+              </div>
+              <div class="sc-row">
+                <div class="sc-head"><span class="sc-name">💊 Symptoms</span><span class="sc-num" id="sc_sym">—</span></div>
+                <div class="sc-track"><div class="sc-fill" id="scb_sym" style="width:0%;background:linear-gradient(90deg,#f093fb,#f5576c)"></div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SLEEP + SPO2 -->
+          <div class="card">
+            <div class="card-head">
+              <div class="card-title-group">
+                <div class="card-icon ci-blue">🌙</div>
+                <div><div class="card-title">Sleep & SpO2</div></div>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:20px;">
+              <div style="text-align:center">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:42px;color:var(--vivid2)" id="v_sleep">--</div>
+                <div style="font-size:11px;color:var(--dim)">hours sleep last night</div>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <div>
+                  <div style="font-size:10px;color:var(--mist);text-transform:uppercase;letter-spacing:1px;">SpO2</div>
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:24px;color:var(--vivid)" id="v_spo2">--%</div>
+                </div>
+                <div>
+                  <div style="font-size:10px;color:var(--mist);text-transform:uppercase;letter-spacing:1px;">Calories</div>
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:24px;color:var(--warn)" id="v_cal">---</div>
+                </div>
+                <div>
+                  <div style="font-size:10px;color:var(--mist);text-transform:uppercase;letter-spacing:1px;">Sleep Score</div>
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:24px;color:var(--text)" id="v_sscore">--</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Row 3: Recommendations + Recent alerts -->
+        <div class="overview-row3 stagger">
+          <div class="card">
+            <div class="card-head">
+              <div class="card-title-group">
+                <div class="card-icon ci-green">💊</div>
+                <div><div class="card-title">Recommendations</div><div class="card-sub">Based on latest prediction</div></div>
+              </div>
+            </div>
+            <div class="reco-list" id="recoList">
+              <div class="reco-item"><span class="reco-icon">ℹ️</span>Awaiting prediction data — connect your wearable to get personalized recommendations.</div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <div class="card-title-group">
+                <div class="card-icon ci-red">🔔</div>
+                <div><div class="card-title">Recent Alerts</div></div>
+              </div>
+            </div>
+            <div class="alert-feed" id="alertFeedOverview"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── LIVE VITALS PANEL ─────────────────────────────────────── -->
+      <div class="panel" id="panel-vitals">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;" class="stagger">
+          <div class="card">
+            <div class="card-head">
+              <div class="card-title-group"><div class="card-icon ci-blue">💓</div><div><div class="card-title">Heart Rate — Live</div></div></div>
+              <div class="live-dot"><div class="pulse-dot"></div>LIVE</div>
+            </div>
+            <div class="chart-wrap"><canvas id="hrChart"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <div class="card-title-group"><div class="card-icon ci-orange">🩸</div><div><div class="card-title">Blood Pressure</div></div></div>
+            </div>
+            <div class="chart-wrap"><canvas id="bpChart"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <div class="card-title-group"><div class="card-icon ci-purple">🌀</div><div><div class="card-title">HRV — Recovery</div></div></div>
+            </div>
+            <div class="chart-wrap"><canvas id="hrvChart"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <div class="card-title-group"><div class="card-icon ci-green">👣</div><div><div class="card-title">Steps + Calories</div></div></div>
+            </div>
+            <div class="chart-wrap"><canvas id="actChart"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── TRENDS PANEL ──────────────────────────────────────────── -->
+      <div class="panel" id="panel-trends">
+        <div style="display:flex;flex-direction:column;gap:16px;" class="stagger">
+          <div class="card">
+            <div class="card-head">
+              <div class="card-title-group"><div class="card-icon ci-red">📉</div><div><div class="card-title">Risk Score — 30 Day Trend</div><div class="card-sub">Disease risk % over time</div></div></div>
+            </div>
+            <div style="height:240px;"><canvas id="riskTrendChart"></canvas></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+            <div class="card">
+              <div class="card-head"><div class="card-title-group"><div class="card-icon ci-purple">🧠</div><div><div class="card-title">Stress vs Fatigue Trend</div></div></div></div>
+              <div class="chart-wrap"><canvas id="sfTrendChart"></canvas></div>
+            </div>
+            <div class="card">
+              <div class="card-head"><div class="card-title-group"><div class="card-icon ci-blue">😴</div><div><div class="card-title">Sleep Quality Trend</div></div></div></div>
+              <div class="chart-wrap"><canvas id="sleepTrendChart"></canvas></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── VOICE PANEL ───────────────────────────────────────────── -->
+      <div class="panel" id="panel-voice">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;" class="stagger">
+          <div class="card">
+            <div class="card-head">
+              <div class="card-title-group"><div class="card-icon ci-purple">🎙️</div><div><div class="card-title">Voice Biomarker Check</div><div class="card-sub">5-second sample — stress & fatigue detection</div></div></div>
+            </div>
+            <div class="voice-wrap">
+              <canvas id="waveCanvas"></canvas>
+              <button class="mic-btn" id="micBtn" onclick="toggleRecording()">🎤</button>
+              <div class="mic-status" id="micStatus">Click mic to record a 5-second sample</div>
+              <div class="voice-grid" id="voiceGrid" style="display:none"></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <div class="card-title-group"><div class="card-icon ci-red">📊</div><div><div class="card-title">Voice Analysis Result</div></div></div>
+            </div>
+            <div id="voiceResultEmpty" class="empty-card">
+              <div class="empty-icon">🎵</div>
+              <div class="empty-msg">Record a voice sample to see<br>stress and fatigue analysis</div>
+            </div>
+            <div id="voiceResultContent" style="display:none">
+              <div class="score-list">
+                <div class="sc-row">
+                  <div class="sc-head"><span class="sc-name">🧠 Stress Score</span><span class="sc-num" id="vs_stress">—</span></div>
+                  <div class="sc-track"><div class="sc-fill" id="vsb_stress" style="width:0%;background:linear-gradient(90deg,#ff6b6b,var(--danger))"></div></div>
+                </div>
+                <div class="sc-row">
+                  <div class="sc-head"><span class="sc-name">😴 Fatigue Score</span><span class="sc-num" id="vs_fatigue">—</span></div>
+                  <div class="sc-track"><div class="sc-fill" id="vsb_fatigue" style="width:0%;background:linear-gradient(90deg,#667eea,#764ba2)"></div></div>
+                </div>
+              </div>
+              <div style="margin-top:20px;padding:14px;background:var(--ink3);border-radius:var(--r0);border:1px solid var(--line)">
+                <div style="font-size:11px;color:var(--mist);margin-bottom:8px;text-transform:uppercase;letter-spacing:1px;">Voice Metrics</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;" id="voiceMetrics"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── ALERTS PANEL ──────────────────────────────────────────── -->
+      <div class="panel" id="panel-alerts">
+        <div class="card stagger">
+          <div class="card-head">
+            <div class="card-title-group"><div class="card-icon ci-red">🔔</div><div><div class="card-title">All Alerts</div><div class="card-sub">Real-time health notifications</div></div></div>
+            <button class="btn-outline" onclick="clearAlerts()">Clear All</button>
+          </div>
+          <div class="alert-feed" id="alertFeedFull" style="max-height:500px"></div>
+        </div>
+      </div>
+
+
+
+    </div><!-- /content -->
+  </div><!-- /body -->
+</div><!-- /shell -->
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════════
+const API = 'http://localhost:8000';
+let USER = null;
+let WS = null;
+let gender = 1;
+let wearableConnected = false;
+let alertCount = 0;
+let allAlerts = [];
+let chartInstances = {};
+let liveHRData = [], liveBPData = [], liveHRVData = [], liveActData = [];
+let trendDays = 30;
+let isRecording = false;
+let mediaRecorder = null;
+let audioChunks = [];
+let audioCtx = null;
+let analyser = null;
+let waveCtx = null;
+let waveAnimId = null;
+
+// Simulated streaming vitals (used when in demo / no real wearable)
+let simInterval = null;
+let simVitals = {
+  heart_rate: 72, systolic_bp: 125, hrv: 48, steps: 4800,
+  sleep_hours: 7.2, spo2: 98, calories: 1840, sleep_score: 78,
+  cholesterol: 195, blood_sugar: 0, stress_reading: 28,
+};
+
+// ═══════════════════════════════════════════════════════════════════════
+// ONBOARDING
+// ═══════════════════════════════════════════════════════════════════════
+function setGender(v) {
+  gender = v;
+  document.getElementById('tog_f').classList.toggle('on', v === 0);
+  document.getElementById('tog_m').classList.toggle('on', v === 1);
+}
+
+async function completeOnboarding() {
+  const name = document.getElementById('ob_name').value.trim();
+  const age  = parseInt(document.getElementById('ob_age').value);
+  if (!name) { toast('Please enter your name'); return; }
+  if (!age || age < 1 || age > 120) { toast('Please enter a valid age'); return; }
+
+  // Try real API, fall back to demo
+  try {
+    const res = await fetch(`${API}/api/users/onboard`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ name, age, gender }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      USER = { user_id: data.user_id, name, age, gender };
+    } else throw new Error();
+  } catch {
+    USER = { user_id: 'demo_' + Date.now(), name, age, gender };
+  }
+
+  document.getElementById('onboardModal').style.display = 'none';
+  initDashboard();
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════════════
+function initDashboard() {
+  document.getElementById('userNameTop').textContent = USER.name;
+  document.getElementById('userAvatarTop').textContent = USER.name[0].toUpperCase();
+  initCharts();
+
+  startSimulation();   // demo vitals stream
+  connectWebSocket();
+  toast(`Welcome, ${USER.name}! Connect your wearable to begin live monitoring.`);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// WEBSOCKET
+// ═══════════════════════════════════════════════════════════════════════
+function connectWebSocket() {
+  if (!USER) return;
+  try {
+    WS = new WebSocket(`ws://localhost:8000/ws/${USER.user_id}`);
+    WS.onopen = () => {
+      document.getElementById('liveStatus').textContent = 'LIVE';
+      document.getElementById('liveDot').style.background = 'var(--vivid)';
+    };
+    WS.onmessage = (e) => {
+      const msg = JSON.parse(e.data);
+      if (msg.type === 'prediction') handlePrediction(msg.data);
+      if (msg.type === 'vitals')     updateVitals(msg.data);
+      if (msg.type === 'alert')      addAlert(msg.level, msg.message);
+    };
+    WS.onclose = () => {
+      document.getElementById('liveStatus').textContent = 'OFFLINE';
+      document.getElementById('liveDot').style.background = 'var(--mist)';
+    };
+  } catch(e) { /* backend not running — demo mode */ }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// DEMO SIMULATION (runs when no real backend / wearable)
+// ═══════════════════════════════════════════════════════════════════════
+function startSimulation() {
+  updateVitalsUI(simVitals);
+  runLocalPrediction(simVitals);
+  buildTrendCharts();
+
+  simInterval = setInterval(() => {
+    // Drift vitals slightly
+    simVitals.heart_rate   = clamp(simVitals.heart_rate   + rand(-2,2), 55, 110);
+    simVitals.systolic_bp  = clamp(simVitals.systolic_bp  + rand(-1,1), 90, 170);
+    simVitals.hrv          = clamp(simVitals.hrv          + rand(-1,1), 20, 90);
+    simVitals.steps       += Math.floor(rand(0, 30));
+    simVitals.spo2         = clamp(simVitals.spo2         + rand(-.1,.1), 94, 100);
+    simVitals.stress_reading = clamp(simVitals.stress_reading + rand(-1,1), 10, 80);
+
+    updateVitalsUI(simVitals);
+    pushLiveCharts(simVitals);
+    runLocalPrediction(simVitals);
+    document.getElementById('lastPredTime').textContent = 'Just now';
+  }, 3000);
+}
+
+function clamp(v, mn, mx) { return Math.max(mn, Math.min(mx, v)); }
+function rand(mn, mx) { return mn + Math.random() * (mx - mn); }
+
+// ═══════════════════════════════════════════════════════════════════════
+// VITALS UI UPDATE
+// ═══════════════════════════════════════════════════════════════════════
+function updateVitalsUI(v) {
+  set('v_hr',    Math.round(v.heart_rate));
+  set('v_bp',    `${Math.round(v.systolic_bp)}`);
+  set('v_hrv',   Math.round(v.hrv));
+  set('v_steps', v.steps.toLocaleString());
+  set('v_sleep', v.sleep_hours?.toFixed(1) ?? '--');
+  set('v_spo2',  (v.spo2?.toFixed(1) ?? '--') + '%');
+  set('v_cal',   Math.round(v.calories ?? 0));
+  set('v_sscore',v.sleep_score ?? '--');
+
+  // Trends
+  const hrTrend = v.heart_rate > 90 ? '<span class="trend-up">↑ High</span>' :
+                  v.heart_rate < 60 ? '<span class="trend-down">↓ Low</span>' :
+                  '<span class="trend-flat">— Normal</span>';
+  document.getElementById('v_hr_trend').innerHTML = hrTrend;
+  set('v_bp_trend', v.systolic_bp > 130 ? '⚠ Elevated' : 'Normal');
+  set('v_hrv_trend', v.hrv > 50 ? '✓ Good recovery' : 'Low recovery');
+  set('v_steps_trend', `${Math.min(100, Math.round((v.steps/10000)*100))}% of goal`);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// LOCAL PREDICTION ENGINE (mirrors XGBoost logic)
+// ═══════════════════════════════════════════════════════════════════════
+function runLocalPrediction(vitals) {
+  if (!USER) return;
+  const age = USER.age, gender = USER.gender;
+  const sbp = vitals.systolic_bp, chol = vitals.cholesterol ?? 195;
+  const maxHR = vitals.heart_rate, bs = 0, sleep = vitals.sleep_hours ?? 7;
+  const steps = vitals.steps, hrv = vitals.hrv;
+
+  const riskRaw  = Math.max(0, sbp-120)*0.3 + Math.max(0,chol-200)*0.05 + Math.max(0,180-maxHR)*0.1;
+  const labRisk  = Math.min(4, (chol>200?1:0)+(chol>240?1:0));
+  const lifeScore= Math.min(3, (steps>=7500?1:0)+(sleep>=7&&sleep<=9?1:0)+(hrv>=50?1:0));
+  const symRisk  = Math.min(6, Math.max(0,(maxHR-100)/20)*3 + (vitals.stress_reading??25)/100*3);
+  const totRisk  = riskRaw*0.35 + (labRisk/4)*6 + (lifeScore/3)*4 + symRisk*0.8;
+
+  const norm = (v,mn,mx) => Math.max(0,Math.min(1,(v-mn)/(mx-mn+1e-6)));
+  let score = (
+    norm(totRisk,0,25.9)*18.4 + norm(riskRaw,0,38.9)*15.2 +
+    norm(symRisk,0,6)*12.1 + norm(chol,150,564)*9.8 +
+    (1-norm(maxHR,60,202))*8.3 + norm(sbp,90,200)*7.6 +
+    norm(age,30,80)*6.9
+  );
+  score = Math.min(100, Math.max(0, score));
+  const label = score >= 62 ? 'High' : score >= 35 ? 'Moderate' : 'Low';
+  const conf  = score >= 62 ? Math.min(.97,.6+(score-62)/100) :
+                score >= 35 ? .55 : Math.min(.97,.6+(35-score)/100);
+
+  displayRisk({
+    label, risk_score: score, confidence: conf,
+    probabilities: {
+      High:     label==='High' ? conf : (1-conf)*0.25,
+      Moderate: label==='Moderate' ? conf : 0.18,
+      Low:      label==='Low' ? conf : (1-conf)*0.55,
+    },
+    recommendations: getReco(label, vitals),
+    vitals: { stress_score: 0, fatigue_score: 0, lab_risk: labRisk,
+              lifestyle_score: lifeScore, symptom_risk: symRisk },
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// DISPLAY PREDICTION
+// ═══════════════════════════════════════════════════════════════════════
+function handlePrediction(data) { displayRisk(data); }
+
+function displayRisk(r) {
+  document.getElementById('riskEmpty').style.display = 'none';
+  document.getElementById('riskResult').style.display = 'block';
+
+  const score = Math.round(r.risk_score ?? 0);
+  const arc = document.getElementById('gaugeArc');
+  arc.style.strokeDashoffset = 251 * (1 - score/100);
+  const colors = {High:'var(--danger)',Moderate:'var(--warn)',Low:'var(--vivid)'};
+  arc.style.stroke = colors[r.label] ?? 'var(--vivid)';
+
+  set('gaugePct', score + '%');
+  document.getElementById('gaugePct').style.color = colors[r.label];
+
+  const badge = document.getElementById('riskBadge');
+  badge.className = `risk-badge rb-${r.label.toLowerCase()}`;
+  set('riskLabel', r.label.toUpperCase() + ' RISK');
+  set('confText', `Confidence: ${(r.confidence*100).toFixed(1)}%`);
+
+  // Prob bars
+  const probs = r.probabilities ?? {};
+  document.getElementById('probBars').innerHTML = ['High','Moderate','Low'].map(cls => `
+    <div class="prob-row">
+      <span class="prob-label">${cls}</span>
+      <div class="prob-track"><div class="prob-fill"
+        style="width:${Math.round((probs[cls]??0)*100)}%;
+               background:${cls==='High'?'var(--danger)':cls==='Moderate'?'var(--warn)':'var(--vivid)'}">
+      </div></div>
+      <span class="prob-pct">${((probs[cls]??0)*100).toFixed(1)}%</span>
+    </div>`).join('');
+
+  // Score bars
+  const v = r.vitals ?? {};
+  const stress = v.stress_score ?? 0, fatigue = v.fatigue_score ?? 0;
+  const lab = v.lab_risk ?? 0, life = v.lifestyle_score ?? 0, sym = v.symptom_risk ?? 0;
+  setTimeout(() => {
+    setBar('scb_stress', stress, 100); set('sc_stress', stress.toFixed(1)+'/100');
+    setBar('scb_fatigue', fatigue, 100); set('sc_fatigue', fatigue.toFixed(1)+'/100');
+    setBar('scb_lab', lab, 4); set('sc_lab', lab+'/4');
+    setBar('scb_life', life, 3); set('sc_life', life+'/3');
+    setBar('scb_sym', sym, 6); set('sc_sym', sym.toFixed(1)+'/6');
+  }, 100);
+
+  // Recommendations
+  const recos = r.recommendations ?? getReco(r.label, {});
+  document.getElementById('recoList').innerHTML = recos.map(rc =>
+    `<div class="reco-item"><span class="reco-icon">${rc[0]}</span>${rc.slice(2)}</div>`
+  ).join('');
+
+  // Auto-alert for high risk
+  if (r.label === 'High') {
+    addAlert('high', `⚠️ HIGH RISK detected — confidence ${(r.confidence*100).toFixed(1)}%`);
+  }
+}
+
+function getReco(label, v) {
+  const r = {
+    High: ['🏥 Consult a cardiologist or physician immediately.',
+           '💊 Review medications — statins or antihypertensives may be indicated.',
+           '📉 Prioritize reducing blood pressure and cholesterol.',
+           '🚫 Avoid strenuous activity until cleared by a doctor.'],
+    Moderate: ['🩺 Schedule a health checkup within 1–2 months.',
+               '🥗 Adopt a heart-healthy diet: reduce sodium and saturated fats.',
+               '🚶 Aim for 150+ minutes moderate exercise per week.',
+               '😴 Ensure 7–9 hours of quality sleep nightly.'],
+    Low: ['✅ Current indicators are favorable — maintain healthy habits.',
+          '📅 Continue annual health screenings.',
+          '🏃 Sustain regular physical activity and balanced nutrition.',
+          '💧 Stay hydrated and manage daily stress.'],
+  };
+  return r[label] ?? r.Low;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// CHARTS
+// ═══════════════════════════════════════════════════════════════════════
+const CHART_DEFAULTS = {
+  responsive: true, maintainAspectRatio: false,
+  plugins: { legend: { display: false } },
+  scales: {
+    x: { grid: { color: 'rgba(30,48,72,.8)', drawBorder: false },
+         ticks: { color: '#4a7090', font: { family: "'JetBrains Mono'", size: 10 } } },
+    y: { grid: { color: 'rgba(30,48,72,.8)', drawBorder: false },
+         ticks: { color: '#4a7090', font: { family: "'JetBrains Mono'", size: 10 } } },
+  },
+  animation: { duration: 300 },
+};
+
+function initCharts() {
+  // Live charts
+  chartInstances.hr  = makeLineChart('hrChart',  '#ff6b8a',  'bpm');
+  chartInstances.bp  = makeLineChart('bpChart',  '#f0a500',    'mmHg');
+  chartInstances.hrv = makeLineChart('hrvChart', '#8b5cf6',        'ms');
+  chartInstances.act = makeBarChart('actChart');
+
+  // Sparklines
+  makeSparkline('sp_hr', '#ff6b8a');
+  makeSparkline('sp_bp', '#f0a500');
+  makeSparkline('sp_hrv','#8b5cf6');
+  makeSparkline('sp_steps','#2dd4bf');
+}
+
+function makeLineChart(id, color, yLabel) {
+  const ctx = document.getElementById(id)?.getContext('2d');
+  if (!ctx) return null;
+  return new Chart(ctx, {
+    type: 'line',
+    data: { labels: [], datasets: [{ data: [], borderColor: color,
+      backgroundColor: color.replace('var(','').replace(')','') + '18',
+      borderWidth: 2, pointRadius: 0, tension: 0.4, fill: true }] },
+    options: { ...CHART_DEFAULTS,
+      scales: { ...CHART_DEFAULTS.scales,
+        y: { ...CHART_DEFAULTS.scales.y, title: { display: false } } } },
+  });
+}
+
+function makeBarChart(id) {
+  const ctx = document.getElementById(id)?.getContext('2d');
+  if (!ctx) return null;
+  return new Chart(ctx, {
+    type: 'bar',
+    data: { labels: [], datasets: [
+      { label: 'Steps', data: [], backgroundColor: 'rgba(45,212,191,.4)', borderColor: '#2dd4bf', borderWidth: 1 },
+    ]},
+    options: CHART_DEFAULTS,
+  });
+}
+
+function makeSparkline(id, color) {
+  const canvas = document.getElementById(id);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.parentElement?.offsetWidth ?? 200;
+  canvas.height = 32;
+  const data = Array.from({length:12}, () => rand(40, 60));
+  new Chart(ctx, {
+    type: 'line',
+    data: { labels: data.map((_,i)=>i), datasets: [{
+      data, borderColor: color, borderWidth: 1.5,
+      pointRadius: 0, tension: 0.4, fill: false,
+    }]},
+    options: { responsive: false, animation: false,
+      plugins: { legend: { display: false } },
+      scales: { x: { display: false }, y: { display: false } } },
+  });
+}
+
+function pushLiveCharts(v) {
+  const now = new Date().toLocaleTimeString('en', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  pushChart(chartInstances.hr,  now, v.heart_rate,   20);
+  pushChart(chartInstances.bp,  now, v.systolic_bp,  20);
+  pushChart(chartInstances.hrv, now, v.hrv,           20);
+  pushChart(chartInstances.act, now, Math.round(v.steps/100), 10);
+}
+
+function pushChart(chart, label, value, maxPoints) {
+  if (!chart) return;
+  chart.data.labels.push(label);
+  chart.data.datasets[0].data.push(Math.round(value));
+  if (chart.data.labels.length > maxPoints) {
+    chart.data.labels.shift();
+    chart.data.datasets[0].data.shift();
+  }
+  chart.update('none');
+}
+
+function buildTrendCharts() {
+  const days = Array.from({length:30}, (_,i) => {
+    const d = new Date(); d.setDate(d.getDate() - 29 + i);
+    return d.toLocaleDateString('en', {month:'short',day:'numeric'});
+  });
+
+  // Risk trend
+  const riskData = days.map((_,i) => Math.max(10, Math.min(80, 35 + Math.sin(i/3)*15 + rand(-5,5))));
+  const rCtx = document.getElementById('riskTrendChart')?.getContext('2d');
+  if (rCtx) {
+    new Chart(rCtx, {
+      type:'line',
+      data: { labels: days, datasets: [{
+        data: riskData, borderColor: 'var(--danger)',
+        backgroundColor: 'rgba(255,68,102,.07)',
+        borderWidth: 2, pointRadius: 2, tension: 0.4, fill: true,
+      }]},
+      options: { ...CHART_DEFAULTS, maintainAspectRatio: false },
+    });
+  }
+
+  // Stress vs Fatigue
+  const sfCtx = document.getElementById('sfTrendChart')?.getContext('2d');
+  if (sfCtx) {
+    new Chart(sfCtx, {
+      type:'line',
+      data: { labels: days.slice(-14), datasets: [
+        { label:'Stress', data: days.slice(-14).map((_,i)=>rand(20,60)+Math.sin(i/2)*10),
+          borderColor:'var(--danger)', borderWidth:2, pointRadius:0, tension:.4, fill:false },
+        { label:'Fatigue', data: days.slice(-14).map((_,i)=>rand(30,70)+Math.cos(i/2)*8),
+          borderColor:'#764ba2', borderWidth:2, pointRadius:0, tension:.4, fill:false },
+      ]},
+      options: { ...CHART_DEFAULTS, plugins: { legend: { display:true, labels:{ color:'var(--dim)',font:{size:11} } } } },
+    });
+  }
+
+  // Sleep
+  const slCtx = document.getElementById('sleepTrendChart')?.getContext('2d');
+  if (slCtx) {
+    new Chart(slCtx, {
+      type:'bar',
+      data: { labels: days.slice(-14),
+        datasets: [{ data: days.slice(-14).map(()=>rand(5,9).toFixed(1)),
+          backgroundColor: 'rgba(0,170,255,.35)', borderColor:'var(--vivid2)', borderWidth:1 }] },
+      options: CHART_DEFAULTS,
+    });
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// VOICE RECORDING
+// ═══════════════════════════════════════════════════════════════════════
+window.addEventListener('load', () => {
+  const canvas = document.getElementById('waveCanvas');
+  if (canvas) {
+    waveCtx = canvas.getContext('2d');
+    canvas.width = canvas.offsetWidth;
+    canvas.height = 50;
+    drawFlatWave();
+  }
+});
+
+function drawFlatWave() {
+  if (!waveCtx) return;
+  const c = document.getElementById('waveCanvas');
+  waveCtx.clearRect(0,0,c.width,c.height);
+  waveCtx.strokeStyle = 'rgba(0,229,176,.2)';
+  waveCtx.lineWidth = 1.5;
+  waveCtx.beginPath();
+  waveCtx.moveTo(0,c.height/2);
+  waveCtx.lineTo(c.width,c.height/2);
+  waveCtx.stroke();
+}
+
+async function toggleRecording() {
+  if (isRecording) return;
+  const btn = document.getElementById('micBtn');
+  const status = document.getElementById('micStatus');
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    audioCtx = new AudioContext();
+    const src = audioCtx.createMediaStreamSource(stream);
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 256;
+    src.connect(analyser);
+    const buf = new Uint8Array(analyser.frequencyBinCount);
+
+    isRecording = true;
+    btn.classList.add('rec');
+    btn.textContent = '⏹';
+    status.className = 'mic-status active';
+
+    let t = 5;
+    status.textContent = `Recording... ${t}s`;
+    const cd = setInterval(() => { t--; if (t>0) status.textContent = `Recording... ${t}s`; }, 1000);
+
+    const drawWave = () => {
+      if (!isRecording) return;
+      analyser.getByteTimeDomainData(buf);
+      const c = document.getElementById('waveCanvas');
+      waveCtx.clearRect(0,0,c.width,c.height);
+      const g = waveCtx.createLinearGradient(0,0,c.width,0);
+      g.addColorStop(0,'rgba(0,170,255,.5)');
+      g.addColorStop(.5,'rgba(0,229,176,.8)');
+      g.addColorStop(1,'rgba(0,170,255,.5)');
+      waveCtx.strokeStyle = g; waveCtx.lineWidth = 2;
+      waveCtx.beginPath();
+      const slw = c.width / buf.length; let x = 0;
+      for (let i=0;i<buf.length;i++) {
+        const y = (buf[i]/128)*c.height/2;
+        i===0 ? waveCtx.moveTo(x,y) : waveCtx.lineTo(x,y);
+        x += slw;
+      }
+      waveCtx.stroke();
+      waveAnimId = requestAnimationFrame(drawWave);
+    };
+    drawWave();
+
+    mediaRecorder = new MediaRecorder(stream);
+    audioChunks = [];
+    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+    mediaRecorder.onstop = () => {
+      clearInterval(cd);
+      cancelAnimationFrame(waveAnimId);
+      stream.getTracks().forEach(t => t.stop());
+      processVoice();
+    };
+    mediaRecorder.start();
+    setTimeout(() => { mediaRecorder.stop(); isRecording = false; btn.classList.remove('rec'); btn.textContent = '🎤'; }, 5000);
+  } catch (e) {
+    toast('Microphone access denied — enter voice features manually');
+    isRecording = false;
+  }
+}
+
+async function processVoice() {
+  const status = document.getElementById('micStatus');
+  status.textContent = 'Analyzing...';
+  status.className = 'mic-status';
+
+  const blob = new Blob(audioChunks, { type: 'audio/webm' });
+  const ab = await blob.arrayBuffer();
+  const ac2 = new AudioContext({ sampleRate: 44100 });
+
+  try {
+    const decoded = await ac2.decodeAudioData(ab);
+    const ch = decoded.getChannelData(0);
+    const sr = decoded.sampleRate;
+
+    // ZCR → pitch approx
+    let zc = 0;
+    for (let i=1;i<ch.length;i++) if ((ch[i]>=0) !== (ch[i-1]>=0)) zc++;
+    const pitch = Math.min(Math.max(zc/ch.length*sr/2,0),400);
+
+    // RMS energy
+    let ss = 0; for (const s of ch) ss += s*s;
+    const energy = Math.sqrt(ss/ch.length);
+
+    // Pause ratio
+    const fs=512, hs=256, fc = Math.floor((ch.length-fs)/hs);
+    let silent=0;
+    for (let i=0;i<fc;i++) {
+      let fe=0; for (let j=0;j<fs;j++) { const s=ch[i*hs+j]; fe+=s*s; }
+      if (Math.sqrt(fe/fs)<.01) silent++;
+    }
+    const pauseRatio = fc>0 ? silent/fc : 0;
+
+    const norm=(v,mn,mx)=>Math.max(0,Math.min(1,(v-mn)/(mx-mn+1e-6)));
+    const stress_score = (norm(pitch,80,250)*.20 + norm(0,0,40)*.25 + norm(0,0,30)*.20 + norm(5,1,8)*.20 + norm(energy,0,.1)*.15) * 100;
+    const fatigue_score = ((1-norm(energy,0,.1))*.25 + norm(pauseRatio,0,.8)*.25 + (1-norm(0,0,40))*.20 + norm(0,0,1)*.15 + (1-norm(15,0,25))*.15) * 100;
+    const sl = stress_score>65?2:stress_score>35?1:0;
+    const fl = fatigue_score>65?2:fatigue_score>35?1:0;
+
+    // Draw waveform
+    const c = document.getElementById('waveCanvas');
+    waveCtx.clearRect(0,0,c.width,c.height);
+    const step = Math.floor(ch.length/c.width);
+    const g = waveCtx.createLinearGradient(0,0,c.width,0);
+    g.addColorStop(0,'rgba(0,170,255,.4)');
+    g.addColorStop(.5,'rgba(0,229,176,.7)');
+    g.addColorStop(1,'rgba(0,170,255,.4)');
+    waveCtx.fillStyle = g;
+    for (let i=0;i<c.width;i++) {
+      const val = Math.abs(ch[i*step]||0);
+      const bh = val*c.height*.9;
+      waveCtx.fillRect(i,(c.height-bh)/2,1,bh);
+    }
+
+    // Voice feature chips
+    const vg = document.getElementById('voiceGrid');
+    vg.style.display = 'grid';
+    vg.innerHTML = [
+      {l:'Pitch', v:pitch.toFixed(1)+' Hz'},
+      {l:'Energy', v:energy.toFixed(5)},
+      {l:'Stress', v:stress_score.toFixed(1)+'/100'},
+      {l:'Fatigue', v:fatigue_score.toFixed(1)+'/100'},
+    ].map(f=>`<div class="vf-chip"><div class="vf-l">${f.l}</div><div class="vf-v">${f.v}</div></div>`).join('');
+
+    // Voice result panel
+    document.getElementById('voiceResultEmpty').style.display = 'none';
+    document.getElementById('voiceResultContent').style.display = 'block';
+    setTimeout(() => {
+      setBar('vsb_stress', stress_score, 100);  set('vs_stress', stress_score.toFixed(1)+'/100');
+      setBar('vsb_fatigue', fatigue_score, 100); set('vs_fatigue', fatigue_score.toFixed(1)+'/100');
+    }, 100);
+    document.getElementById('voiceMetrics').innerHTML = [
+      {l:'Pitch',v:pitch.toFixed(1)+' Hz'}, {l:'Energy',v:energy.toFixed(5)},
+      {l:'Pause Ratio',v:pauseRatio.toFixed(3)}, {l:'Stress Lvl',v:['Low','Medium','High'][sl]},
+    ].map(m=>`<div><div style="font-size:10px;color:var(--mist);margin-bottom:3px">${m.l}</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--vivid)">${m.v}</div></div>`).join('');
+
+    status.textContent = '✓ Analysis complete'; status.className = 'mic-status done';
+    toast('Voice features extracted — updating prediction...');
+
+    // Push voice to simVitals and re-predict
+    simVitals.stress_score = stress_score;
+    simVitals.fatigue_score = fatigue_score;
+    simVitals.stress_level_enc = sl;
+    simVitals.fatigue_level_enc = fl;
+
+    // Submit to API
+    try {
+      await fetch(`${API}/api/voice/submit`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ user_id: USER.user_id, pitch, energy, stress_score, fatigue_score, stress_level_enc:sl, fatigue_level_enc:fl }),
+      });
+    } catch(e) {}
+  } catch(e) {
+    status.textContent = 'Processing failed'; toast('Could not analyze audio');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// ALERTS
+// ═══════════════════════════════════════════════════════════════════════
+function addAlert(level, message) {
+  const time = new Date().toLocaleTimeString();
+  const alert = { level, message, time };
+  allAlerts.unshift(alert);
+  alertCount++;
+
+  const badge = document.getElementById('alertBadge');
+  badge.style.display = 'inline';
+  badge.textContent = alertCount;
+
+  const html = `<div class="alert-item al-${level}">
+    <span>${message}</span>
+    <span class="al-time">${time}</span>
+  </div>`;
+
+  ['alertFeedOverview','alertFeedFull'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.insertAdjacentHTML('afterbegin', html);
+  });
+}
+
+function clearAlerts() {
+  allAlerts = []; alertCount = 0;
+  document.getElementById('alertBadge').style.display = 'none';
+  ['alertFeedOverview','alertFeedFull'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = '';
+  });
+}
+
+
+
+// ═══════════════════════════════════════════════════════════════════════
+// WEARABLE CONNECT
+// ═══════════════════════════════════════════════════════════════════════
+function openConnect() { document.getElementById('connectModal').style.display = 'flex'; }
+function closeConnect() { document.getElementById('connectModal').style.display = 'none'; }
+
+async function connectWearable(source) {
+  closeConnect();
+  toast(`Connecting to ${source === 'fitbit' ? 'Fitbit' : 'Google Fit'}...`);
+  try {
+    const res = await fetch(`${API}/api/wearable/connect/${USER.user_id}/${source}`);
+    const data = await res.json();
+    if (data.url) window.open(data.url, '_blank');
+  } catch {
+    // Demo mode
+    setTimeout(() => {
+      wearableConnected = true;
+      document.getElementById('wDot').className = 'wearable-dot w-connected';
+      document.getElementById('wLabel').textContent = source === 'fitbit' ? 'Fitbit connected' : 'Google Fit connected';
+      toast(`✅ ${source === 'fitbit' ? 'Fitbit' : 'Google Fit'} connected! Vitals streaming...`);
+      addAlert('info', `ℹ️ Wearable connected: ${source}. Live monitoring active.`);
+    }, 800);
+  }
+}
+
+async function triggerSync() {
+  toast('Syncing wearable data...');
+  try {
+    await fetch(`${API}/api/wearable/sync/${USER.user_id}`, { method:'POST' });
+  } catch {}
+  setTimeout(() => toast('✓ Sync complete'), 1200);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════════════════════════
+function showPanel(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('panel-' + name)?.classList.add('active');
+  document.getElementById('nav-' + name)?.classList.add('active');
+  if (name === 'trends') buildTrendCharts();
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════════════════════════
+function set(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val;
+}
+
+function setBar(id, val, max) {
+  const el = document.getElementById(id);
+  if (el) el.style.width = Math.min(100, Math.round(val/max*100)) + '%';
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3800);
+}
+
+function updateVitals(v) { updateVitalsUI(v); pushLiveCharts(v); runLocalPrediction(v); }
+</script>
+</body>
+</html>

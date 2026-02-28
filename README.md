@@ -10,18 +10,6 @@ VitalSense is a full-stack health monitoring web app that predicts disease risk 
 ![XGBoost](https://img.shields.io/badge/ML-XGBoost-orange)
 
 ---
-## 👥 Meet the Team
-
-VitalSense was built by **Scrappy Studio** — a team of passionate developers dedicated to making early health detection accessible to everyone.
-
-| Name | GitHub |
-|---|---|
-| Kamlesh Y | https://github.com/kamlesh-4407 |
-| Kishore B | https://github.com/kishore3106 |
-| Ramya G | — |
-| Mahashri D | — |
-
----
 
 ## ✨ Features
 
@@ -161,6 +149,18 @@ Voice features (`pitch`, `energy`, `stress_score`, `fatigue_score`) are added wh
 | Wearable APIs | Fitbit OAuth2, Google Fit REST API |
 | Real-time | WebSockets |
 | Storage | JSON / JSONL flat files |
+
+---
+## 👥 Meet the Team
+
+VitalSense was built by **Scrappy Studio** — a team of passionate developers dedicated to making early health detection accessible to everyone.
+
+| Name | GitHub |
+|---|---|
+| Kamlesh Y | https://github.com/kamlesh-4407 |
+| Kishore B | https://github.com/kishore3106 |
+| Ramya G | — |
+| Mahashri D | — |
 
 ---
 

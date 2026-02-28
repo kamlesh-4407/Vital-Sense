@@ -10,6 +10,18 @@ VitalSense is a full-stack health monitoring web app that predicts disease risk 
 ![XGBoost](https://img.shields.io/badge/ML-XGBoost-orange)
 
 ---
+## 👥 Meet the Team
+
+VitalSense was built by **Scrappy Studio** — a team of passionate developers dedicated to making early health detection accessible to everyone.
+
+| Name | GitHub |
+|---|---|
+| Kamlesh Y | https://github.com/kamlesh-4407 |
+| Kishore B | https://github.com/kishore3106 |
+| Ramya G | — |
+| Mahashri D | — |
+
+---
 
 ## ✨ Features
 
@@ -78,6 +90,7 @@ VitalSense/
 
 ---
 
+
 ## 🚀 Quick Start
 
 ### Prerequisites
@@ -105,6 +118,8 @@ python run.py
 
 Open your browser at **http://localhost:8000**
 
+---
+
 ## 🔌 Wearable Integration
 
 ### Google Fit & Fitbit — OAuth2 Setup
@@ -115,8 +130,10 @@ Open your browser at **http://localhost:8000**
 
 **Step 3:** Connect your device from the dashboard → OAuth redirect → tokens stored → auto-sync begins.
 
-### Supported Metrics
 ---
+
+### Supported Metrics
+
 | Metric | Fitbit | Google Fit |
 |---|---|---|
 | Heart Rate (live) | ✅ | ✅ |
@@ -129,10 +146,10 @@ Open your browser at **http://localhost:8000**
 | SpO2 | ✅ | — |
 | Blood Glucose | — | ✅ |
 | Stress Score | ✅ | — |
----
+
 
 Voice features (`pitch`, `energy`, `stress_score`, `fatigue_score`) are added when a voice check is submitted.
-
+---
 ## 🛠️ Tech Stack
 
 | Layer | Technology |
@@ -144,9 +161,6 @@ Voice features (`pitch`, `energy`, `stress_score`, `fatigue_score`) are added wh
 | Wearable APIs | Fitbit OAuth2, Google Fit REST API |
 | Real-time | WebSockets |
 | Storage | JSON / JSONL flat files |
-
----
-
 
 ---
 
